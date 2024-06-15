@@ -1,6 +1,15 @@
 import subprocess
 import platform
 import argparse
+import socket
+
+def validate_host(hostname):
+    try:
+        socket.gethostbyname(hostname)
+    except (socket.error, socket.herror, socket.gaierror):
+        return False
+    return True
+
 
 def ping_host(target, size):
     count_flag = '-n'
@@ -13,6 +22,7 @@ def ping_host(target, size):
     
     try:
         response = subprocess.run(['ping', target, count_flag, '1'] + no_fragment_flag + [size_flag, str(size)], capture_output=True)
+        print(response.stderr, response.stdout)
     except Exception:
         return 0
 
@@ -27,18 +37,26 @@ def mtu_detection():
     parser.add_argument('host')
 
     args = parser.parse_args()
+
+    if not args.host:
+        print('Ошибка: требуется указать хост.')
+        return 1
+
     target_host = args.host
     full_mode = args.full_mode
 
+    if not validate_host(target_host):
+        print(f'Имя хоста {target_host} не может быть разрешено или некорректно')
+        return 1
+
     try:
         if subprocess.run(['ping', '-c', '1', target_host], capture_output=True).returncode != 0:
-            print(f'Хост {target_host} недоступен')
             return 1
     except Exception:
         print('Возникло неожиданное исключение при попытке первоначального пинга')
         return 1
 
-    low = 1000
+    low = 1
     high = 4000
 
     while high - low > 1:
